@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, BarChart2, AlertTriangle, Shield, Menu, X, Home, Flag } from 'lucide-react';
+import { ChevronDown, BarChart2, AlertTriangle, Shield, Menu, X, Home, Flag, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Navbar = () => {
@@ -18,7 +17,6 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile menu when route changes
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
@@ -43,6 +41,11 @@ const Navbar = () => {
       name: 'Report', 
       path: '/report', 
       icon: <Flag className="w-4 h-4 mr-1.5" /> 
+    },
+    { 
+      name: 'Import Data', 
+      path: '/import', 
+      icon: <Upload className="w-4 h-4 mr-1.5" /> 
     }
   ];
 
@@ -50,12 +53,11 @@ const Navbar = () => {
     <header 
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        isScrolled ? 'bg-white/90 backdrop-blur-md border-b shadow-sm' : 'bg-white border-b'  // Changed from bg-transparent to bg-white
+        isScrolled ? 'bg-white/90 backdrop-blur-md border-b shadow-sm' : 'bg-white border-b'
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <div className="flex items-center">
             <NavLink 
               to="/" 
@@ -66,7 +68,6 @@ const Navbar = () => {
             </NavLink>
           </div>
 
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => (
               <NavLink
@@ -85,7 +86,6 @@ const Navbar = () => {
             ))}
           </nav>
 
-          {/* Mobile menu button */}
           <div className="flex md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -101,7 +101,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile menu */}
       <div className={cn(
         'md:hidden transition-all duration-300 overflow-hidden',
         mobileMenuOpen ? 'max-h-screen bg-white border-b' : 'max-h-0'
