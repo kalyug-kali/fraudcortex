@@ -24,7 +24,7 @@ const PageContainer = ({
   return (
     <main 
       className={cn(
-        'page-container pt-24 pb-16 min-h-screen',
+        'page-container pt-28 pb-16 min-h-screen', // Increased top padding from pt-24 to pt-28
         animate && 'animate-fade-in',
         className
       )}
