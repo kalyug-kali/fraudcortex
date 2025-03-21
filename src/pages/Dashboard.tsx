@@ -9,22 +9,19 @@ import FilterSection from '@/components/dashboard/FilterSection';
 import TransactionTable from '@/components/dashboard/TransactionTable';
 import FraudChart from '@/components/dashboard/FraudChart';
 import MetricsCards from '@/components/dashboard/MetricsCards';
+import ApiSettings from '@/components/dashboard/ApiSettings';
 
-import { Transaction, TransactionFilters, ChartData, ConfusionMatrix, PerformanceMetrics } from '@/types';
+import { Transaction, TransactionFilters } from '@/types';
+import { useFraudPrediction } from '@/hooks/useFraudPrediction';
+import { generateChartData, calculatePerformanceMetrics } from '@/utils/dataTransform';
 
-// Mock data (would normally come from API)
+// Mock data generator (would normally come from API)
 const generateMockTransactions = (count: number): Transaction[] => {
   const channels = ['Web', 'Mobile', 'In-person', 'API'];
   const paymentModes = ['Card', 'UPI', 'Bank Transfer', 'Wallet'];
   const gateways = ['PayPal', 'Stripe', 'Square', 'Adyen', 'Chase'];
   
   return Array.from({ length: count }, (_, i) => {
-    const is_fraud_predicted = Math.random() < 0.15;
-    // 80% chance the reported status matches the prediction
-    const is_fraud_reported = Math.random() < 0.8 
-      ? is_fraud_predicted 
-      : !is_fraud_predicted;
-    
     return {
       transaction_id: `TXN-${(100000 + i).toString().padStart(6, '0')}`,
       amount: Math.round(Math.random() * 9900 + 100), // $100 to $10,000
@@ -36,115 +33,14 @@ const generateMockTransactions = (count: number): Transaction[] => {
       channel: channels[Math.floor(Math.random() * channels.length)] as any,
       payment_mode: paymentModes[Math.floor(Math.random() * paymentModes.length)] as any,
       payment_gateway: gateways[Math.floor(Math.random() * gateways.length)],
-      is_fraud_predicted,
-      is_fraud_reported
+      is_fraud_predicted: false, // Will be set by the ML model
+      is_fraud_reported: false // This would come from user reports
     };
   });
-};
-
-// Generate chart data from transactions
-const generateChartData = (transactions: Transaction[], groupBy: 'channel' | 'payment_mode' | 'payment_gateway' | 'time'): ChartData => {
-  if (groupBy === 'time') {
-    // Generate time series data
-    const timeLabels: string[] = [];
-    const timePredicted: number[] = [];
-    const timeReported: number[] = [];
-    
-    // Group by date (last 14 days)
-    const now = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      timeLabels.push(dateString);
-      
-      // Count transactions for this date
-      const dayStart = new Date(date.setHours(0, 0, 0, 0)).toISOString();
-      const dayEnd = new Date(date.setHours(23, 59, 59, 999)).toISOString();
-      
-      const dayTransactions = transactions.filter(t => 
-        t.timestamp >= dayStart && t.timestamp <= dayEnd
-      );
-      
-      timePredicted.push(dayTransactions.filter(t => t.is_fraud_predicted).length);
-      timeReported.push(dayTransactions.filter(t => t.is_fraud_reported).length);
-    }
-    
-    return {
-      labels: timeLabels,
-      predicted: timePredicted,
-      reported: timeReported
-    };
-  }
-  
-  // Group by the specified field
-  const groups: Record<string, { predicted: number; reported: number }> = {};
-  
-  transactions.forEach(transaction => {
-    const key = transaction[groupBy] as string;
-    if (!groups[key]) {
-      groups[key] = { predicted: 0, reported: 0 };
-    }
-    
-    if (transaction.is_fraud_predicted) {
-      groups[key].predicted++;
-    }
-    
-    if (transaction.is_fraud_reported) {
-      groups[key].reported++;
-    }
-  });
-  
-  return {
-    labels: Object.keys(groups),
-    predicted: Object.values(groups).map(g => g.predicted),
-    reported: Object.values(groups).map(g => g.reported)
-  };
-};
-
-// Calculate performance metrics
-const calculatePerformanceMetrics = (transactions: Transaction[]): { matrix: ConfusionMatrix; metrics: PerformanceMetrics } => {
-  let truePositives = 0;
-  let falsePositives = 0;
-  let trueNegatives = 0;
-  let falseNegatives = 0;
-  
-  transactions.forEach(transaction => {
-    if (transaction.is_fraud_predicted && transaction.is_fraud_reported) {
-      truePositives++;
-    } else if (transaction.is_fraud_predicted && !transaction.is_fraud_reported) {
-      falsePositives++;
-    } else if (!transaction.is_fraud_predicted && !transaction.is_fraud_reported) {
-      trueNegatives++;
-    } else if (!transaction.is_fraud_predicted && transaction.is_fraud_reported) {
-      falseNegatives++;
-    }
-  });
-  
-  const precision = truePositives / (truePositives + falsePositives) || 0;
-  const recall = truePositives / (truePositives + falseNegatives) || 0;
-  const f1Score = 2 * (precision * recall) / (precision + recall) || 0;
-  const accuracy = (truePositives + trueNegatives) / transactions.length || 0;
-  
-  return {
-    matrix: {
-      truePositives,
-      falsePositives,
-      trueNegatives,
-      falseNegatives
-    },
-    metrics: {
-      precision,
-      recall,
-      f1Score,
-      accuracy
-    }
-  };
 };
 
 const Dashboard = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<TransactionFilters>({
     startDate: null,
@@ -163,8 +59,7 @@ const Dashboard = () => {
       
       try {
         const mockData = generateMockTransactions(150);
-        setTransactions(mockData);
-        setFilteredTransactions(mockData);
+        setRawTransactions(mockData);
       } catch (error) {
         console.error('Error fetching transactions:', error);
         toast.error('Failed to load transaction data');
@@ -175,8 +70,18 @@ const Dashboard = () => {
     
     fetchData();
   }, []);
+
+  // Get fraud predictions from our ML model (or fallback)
+  const { 
+    enrichedTransactions: transactions, 
+    totalFraudCount,
+    modelVersion, 
+    isLoading: isPredictionLoading 
+  } = useFraudPrediction(rawTransactions);
   
   // Apply filters when they change
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  
   useEffect(() => {
     let filtered = [...transactions];
     
@@ -253,7 +158,7 @@ const Dashboard = () => {
   
   // Calculate summary metrics
   const totalTransactions = filteredTransactions.length;
-  const flaggedTransactions = filteredTransactions.filter(t => t.is_fraud_predicted).length;
+  const flaggedTransactions = totalFraudCount;
   const fraudRatio = flaggedTransactions / totalTransactions || 0;
   const fraudTransactions = filteredTransactions.filter(t => t.is_fraud_predicted);
   const avgFraudAmount = fraudTransactions.reduce((sum, t) => sum + t.amount, 0) / fraudTransactions.length || 0;
@@ -261,12 +166,18 @@ const Dashboard = () => {
   return (
     <PageContainer>
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <BarChart2 className="h-6 w-6 text-blue-600" />
-          <h1 className="text-2xl font-semibold">Fraud Monitoring Dashboard</h1>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="h-6 w-6 text-blue-600" />
+            <h1 className="text-2xl font-semibold">Fraud Monitoring Dashboard</h1>
+          </div>
+          <ApiSettings />
         </div>
         <p className="text-gray-500">
           Monitor transactions, detect fraud patterns, and analyze detection performance.
+          {modelVersion && (
+            <span className="ml-2 text-sm text-blue-600">Model: {modelVersion}</span>
+          )}
         </p>
       </div>
       
@@ -296,7 +207,7 @@ const Dashboard = () => {
       {/* Transactions table */}
       <TransactionTable 
         transactions={filteredTransactions} 
-        isLoading={loading} 
+        isLoading={loading || isPredictionLoading} 
       />
       
       {/* Charts section */}

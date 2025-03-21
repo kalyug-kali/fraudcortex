@@ -1,4 +1,3 @@
-
 // Transaction types
 export interface Transaction {
   transaction_id: string;
@@ -11,6 +10,7 @@ export interface Transaction {
   payment_gateway: string;
   is_fraud_predicted: boolean;
   is_fraud_reported: boolean;
+  fraud_score?: number; // Optional fraud score from ML model
 }
 
 // Rule types
