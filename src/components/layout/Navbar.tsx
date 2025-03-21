@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, BarChart2, AlertTriangle, Shield, Menu, X } from 'lucide-react';
+import { ChevronDown, BarChart2, AlertTriangle, Shield, Menu, X, Home, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Navbar = () => {
@@ -25,6 +25,11 @@ const Navbar = () => {
 
   const navItems = [
     { 
+      name: 'Home', 
+      path: '/', 
+      icon: <Home className="w-4 h-4 mr-1.5" /> 
+    },
+    { 
       name: 'Dashboard', 
       path: '/dashboard', 
       icon: <BarChart2 className="w-4 h-4 mr-1.5" /> 
@@ -33,6 +38,11 @@ const Navbar = () => {
       name: 'Rules', 
       path: '/rules', 
       icon: <Shield className="w-4 h-4 mr-1.5" /> 
+    },
+    { 
+      name: 'Report', 
+      path: '/report', 
+      icon: <Flag className="w-4 h-4 mr-1.5" /> 
     }
   ];
 
