@@ -182,8 +182,8 @@ const FileUpload = ({ onFileLoaded, acceptedTypes = ".json,.csv" }: FileUploadPr
             </p>
             <div className="flex gap-4">
               <Button 
-                as="label" 
-                htmlFor="file-upload" 
+                variant="default"
+                onClick={() => document.getElementById('file-upload')?.click()}
                 className="cursor-pointer"
               >
                 <FileUp className="mr-2 h-4 w-4" />
