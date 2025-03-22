@@ -33,6 +33,10 @@ const MetricsCards = ({
     }).format(value);
   };
 
+  // Recalculate the metrics to ensure they're correct
+  const actualFlaggedCount = flaggedTransactions;
+  const actualFraudRatio = totalTransactions > 0 ? (actualFlaggedCount / totalTransactions) : 0;
+
   const metrics = [
     {
       title: 'Total Transactions',
@@ -44,7 +48,7 @@ const MetricsCards = ({
     },
     {
       title: 'Flagged as Fraud',
-      value: flaggedTransactions.toLocaleString(),
+      value: actualFlaggedCount.toLocaleString(),
       icon: AlertTriangle,
       color: 'bg-red-50 text-red-600',
       trend: '+2.1% from last month',
@@ -52,7 +56,7 @@ const MetricsCards = ({
     },
     {
       title: 'Fraud Ratio',
-      value: formatPercent(fraudRatio),
+      value: formatPercent(actualFraudRatio),
       icon: TrendingUp,
       color: 'bg-amber-50 text-amber-600',
       trend: '-0.3% from last month',

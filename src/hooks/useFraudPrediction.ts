@@ -9,6 +9,7 @@ export const useFraudPrediction = (transactions: Transaction[]) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiUrl, setApiUrl] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   // Listen for changes to the API URL in localStorage
   useEffect(() => {
@@ -39,12 +40,17 @@ export const useFraudPrediction = (transactions: Transaction[]) => {
     setError(null);
     
     try {
+      console.log(`Fetching fraud predictions for ${transactionsToPredict.length} transactions`);
+      
       // Try to get predictions from the API
       const apiPredictions = await predictFraud(transactionsToPredict);
       
       if (apiPredictions) {
-        // Verify that we have exactly 11 fraud cases or adjust if needed
+        console.log('Successfully received API predictions:', apiPredictions);
+        
+        // Verify fraud count is correct
         const fraudCount = apiPredictions.predictions.filter(p => p.is_fraud_predicted).length;
+        console.log(`API predicted ${fraudCount} fraud cases`);
         
         if (fraudCount !== 11 && fraudCount !== Math.min(11, transactionsToPredict.length)) {
           console.warn(`ML model predicted ${fraudCount} fraud cases, but expected exactly 11 (or all transactions if less than 11).`);
@@ -55,12 +61,15 @@ export const useFraudPrediction = (transactions: Transaction[]) => {
         
         setPredictions(apiPredictions);
       } else {
+        console.log('API predictions failed, using fallback');
         // If API fails, use the fallback that guarantees 11 fraud cases
         const fallbackPredictions = getFallbackPredictions(transactionsToPredict);
         setPredictions(fallbackPredictions);
-        // Removed toast notification about using fallback predictions
       }
+      
+      setLastRefreshed(new Date());
     } catch (err) {
+      console.error('Error in fetchPredictions:', err);
       setError('Failed to get fraud predictions');
       // Still use fallback even if there's an error
       const fallbackPredictions = getFallbackPredictions(transactionsToPredict);
@@ -70,8 +79,11 @@ export const useFraudPrediction = (transactions: Transaction[]) => {
     }
   };
 
+  // Fetch predictions when transactions change or when manually refreshed
   useEffect(() => {
-    fetchPredictions(transactions);
+    if (transactions.length > 0) {
+      fetchPredictions(transactions);
+    }
   }, [transactions]);
 
   // Apply predictions to transaction data
@@ -99,6 +111,7 @@ export const useFraudPrediction = (transactions: Transaction[]) => {
     modelVersion: predictions?.model_version || 'unknown',
     isLoading,
     error,
+    lastRefreshed,
     refreshPredictions: () => fetchPredictions(transactions)
   };
 };

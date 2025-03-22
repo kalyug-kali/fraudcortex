@@ -1,3 +1,4 @@
+
 import { Transaction } from '@/types';
 import { toast } from 'sonner';
 
@@ -45,19 +46,33 @@ export const predictFraud = async (transactions: Transaction[]): Promise<FraudPr
       },
       body: JSON.stringify({ transactions: transactionData }),
       // Add a longer timeout for Colab which might be slow to respond
-      signal: AbortSignal.timeout(10000) // 10 second timeout
+      signal: AbortSignal.timeout(15000) // 15 second timeout
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API Error (${response.status}): ${errorText}`);
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
     console.log('ML model response:', result);
+    
+    // Validate the response structure
+    if (!result.predictions || !Array.isArray(result.predictions)) {
+      console.error('Invalid API response format:', result);
+      throw new Error('Invalid API response format');
+    }
+    
     return result;
   } catch (error) {
     console.error('Error predicting fraud:', error);
-    // Removed the toast notification about using fallback predictions
+    // Only show error toast for network issues, not when using fallback
+    if (error instanceof TypeError || (error instanceof Error && error.message.includes('Failed to fetch'))) {
+      toast.error('Failed to connect to ML API', {
+        description: 'Using local fallback predictions instead'
+      });
+    }
     return null;
   }
 };
