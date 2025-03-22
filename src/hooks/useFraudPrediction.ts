@@ -58,9 +58,7 @@ export const useFraudPrediction = (transactions: Transaction[]) => {
         // If API fails, use the fallback that guarantees 11 fraud cases
         const fallbackPredictions = getFallbackPredictions(transactionsToPredict);
         setPredictions(fallbackPredictions);
-        toast.info('Using fallback predictions', {
-          description: 'The ML model API is not available. Using fallback predictions with 11 fraud cases.'
-        });
+        // Removed toast notification about using fallback predictions
       }
     } catch (err) {
       setError('Failed to get fraud predictions');

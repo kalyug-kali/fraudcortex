@@ -58,9 +58,7 @@ export const predictFraud = async (transactions: Transaction[]): Promise<FraudPr
     return result;
   } catch (error) {
     console.error('Error predicting fraud:', error);
-    toast.error('Failed to connect to fraud detection model', {
-      description: 'Using local fallback predictions instead.'
-    });
+    // Removed the toast notification about using fallback predictions
     return null;
   }
 };
