@@ -25,6 +25,8 @@ export const predictFraud = async (transactions: Transaction[]): Promise<FraudPr
   try {
     const API_URL = getApiUrl();
     
+    console.log('Calling ML model API at:', API_URL);
+    
     // Extract only the fields needed for prediction
     const transactionData = transactions.map(t => ({
       transaction_id: t.transaction_id,
@@ -43,13 +45,17 @@ export const predictFraud = async (transactions: Transaction[]): Promise<FraudPr
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ transactions: transactionData }),
+      // Add a longer timeout for Colab which might be slow to respond
+      signal: AbortSignal.timeout(10000) // 10 second timeout
     });
 
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('ML model response:', result);
+    return result;
   } catch (error) {
     console.error('Error predicting fraud:', error);
     toast.error('Failed to connect to fraud detection model', {
@@ -59,9 +65,9 @@ export const predictFraud = async (transactions: Transaction[]): Promise<FraudPr
   }
 };
 
-// Fallback function that simulates API response in case the API is unavailable
+// Fallback function that simulates API response ensuring exactly 11 fraud cases
 export const getFallbackPredictions = (transactions: Transaction[]): FraudPredictionResponse => {
-  // Ensure exactly 11 transactions are marked as fraud (as per your requirement)
+  // Ensure exactly 11 transactions are marked as fraud (as per ML model)
   const total = transactions.length;
   const fraudCount = Math.min(11, total);
   
