@@ -1,13 +1,12 @@
-
 import { Transaction } from '@/types';
 import { toast } from 'sonner';
 
-// Get API URL from localStorage if available
+// Get API URL from localStorage if available, otherwise use the provided ngrok URL
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('fraudApiUrl') || import.meta.env.VITE_FRAUD_API_URL || 'http://localhost:5000';
+    return localStorage.getItem('fraudApiUrl') || import.meta.env.VITE_FRAUD_API_URL || 'https://5e4a-34-82-13-90.ngrok-free.app';
   }
-  return import.meta.env.VITE_FRAUD_API_URL || 'http://localhost:5000';
+  return import.meta.env.VITE_FRAUD_API_URL || 'https://5e4a-34-82-13-90.ngrok-free.app';
 };
 
 export interface FraudPredictionResponse {

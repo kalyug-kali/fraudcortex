@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/tabs";
 
 const ApiSettings = () => {
-  const [apiUrl, setApiUrl] = useState(localStorage.getItem('fraudApiUrl') || 'http://localhost:5000');
+  const [apiUrl, setApiUrl] = useState(localStorage.getItem('fraudApiUrl') || 'https://5e4a-34-82-13-90.ngrok-free.app');
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("settings");
 
